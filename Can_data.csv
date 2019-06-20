@@ -1,0 +1,50 @@
+Event Name,H,L,Volume,Area,H_max,SLD,Confinement,E_Dissipation,Substrate,Source_Geo
+Todagin Creek,840,2190,4,9.57E+05,770,1670,Frontal,Intermediate,Unsaturated,Weak/weathered
+McAuley Creek,500,1600,7.4,4.62E+05,580,1350,Frontal,High,Saturated,Fresh/strong
+Zymoetz River,610,1220,1,4.50E+05,1250,980,Frontal,Intermediate,Saturated,Weak/weathered
+Pink Mountain,450,1950,1.04,3.92E+05,450,1420,Unconfined,Low,Saturated,Weak/weathered
+Mosque,520,1260,5,2.77E+05,480,1030,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Mount Meager,1720,8950,48.5,7.07E+06,2180,7280,Lateral,High,Saturated,Weak/weathered
+Turnoff Creek,370,1230,4,3.23E+05,390,1030,Frontal,High,Unsaturated,Weak/weathered
+Chisca,330,1390,1,4.18E+05,330,1280,Unconfined,Intermediate,Saturated,Weak/weathered
+Harold Price,730,2660,1.6,7.32E+05,720,2190,Lateral,Intermediate,Saturated,Weak/weathered
+Sutherland,270,1450,3,3.44E+05,270,1170,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Rubble Creek ,1070,6500,25,4.99E+06,1070,5410,Lateral,Intermediate,Saturated,Fresh/strong
+Ruby Volcano,690,3340,60,2.40E+06,690,2440,Frontal,Intermediate,Unsaturated,Fresh/strong
+Mystery Creek,1110,3490,40,2.89E+06,1110,2700,Frontal,Intermediate,Saturated,Fresh/strong
+Little Salmon Lake,490,1620,2,3.69E+05,515,1520,Unconfined,Intermediate,Saturated,Weak/weathered
+Vulcan Creek ,355,1200,1,2.01E+05,355,820,Frontal,Intermediate,Unsaturated,Weak/weathered
+Aishihik River ,560,2160,22,1.16E+06,540,2160,Unconfined,Intermediate,Unsaturated,Fresh/strong
+Nahanni Bute,400,1550,6,6.42E+05,400,1410,Lateral,High,Saturated,Fresh/strong
+Queen Elizabeth,680,1950,45,2.10E+06,910,1650,Frontal,Intermediate,Saturated,Weak/weathered
+Slide Mountain,380,1560,10,8.79E+05,500,730,Frontal,High,Saturated,Weak/weathered
+Mount Sparrowhawk,560,1590,10,4.12E+05,830,1340,Lateral,Intermediate,Unsaturated,Weak/weathered
+Beaver Flats North,320,1070,4.1,5.64E+05,380,870,Frontal,Intermediate,Unsaturated,Weak/weathered
+Beaver Flats South,220,1200,4.8,659000,300,870,Frontal,Intermediate,Unsaturated,Weak/weathered
+Jonas Creek North,880,3250,5.4,1.41E+06,880,2570,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Jonas Creek South,920,2490,10.2,9.72E+05,920,1980,Unconfined,Intermediate,Bedrock,Weak/weathered
+Maligne Lake,760,6270,498,1.03E+07,970,3820,Frontal,Intermediate,Saturated,Weak/weathered
+Medicine Lake ,440,1340,86,1.46E+06,440,1300,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Mount Kitchener,950,2420,39.1,1.34E+06,950,2030,Frontal,High,Unsaturated,Weak/weathered
+Frank Slide,760,3080,36.5,3.57E+06,850,1400,Frontal,Intermediate,Saturated,Weak/weathered
+Brazeau Lake Slide,620,2400,4.5,1.04E+06,620,2300,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Eagle Pass (Clanwilliam),570,950,0.1,1.29E+05,570,820,Unconfined,Intermediate,Saturated,Fresh/strong
+Nomash River,460,1930,0.7,2.77E+05,560,1520,Lateral,Low,Saturated,Fresh/strong
+Avalanche Lake North,1090,4000,30,1.82E+06,1090,3200,Frontal,High,Saturated,Weak/weathered
+Avalanche Lake South lobe,1120,6250,400,6.03E+06,1000,2550,Frontal,High,Saturated,Weak/weathered
+Damocles Slide,540,4110,20,1.80E+06,540,3220,Lateral,High,Saturated,Weak/weathered
+Rockslide Pass,830,4930,450,7.33E+06,830,4750,Frontal,High,Saturated,Weak/weathered
+Triple Slide ,580,3480,45,2.09E+06,580,2230,Lateral,High,Bedrock,Weak/weathered
+Twin Slides - West arm,910,4550,5,7.16E+05,910,4140,Lateral,Low,Saturated,Weak/weathered
+Twin Slides - East arm ,850,4100,5,9.75E+05,850,3550,Lateral,Low,Saturated,Weak/weathered
+Pelly Mountain Rock Avalanches - 1,740,3700,3.1,1.28E+06,740,3500,Lateral,Intermediate,Unsaturated,Fresh/strong
+Pelly Mountains - 2,610,2180,2.1,8.66E+05,690,1290,Lateral,Intermediate,,Fresh/strong
+Pelly Mountains - 3,350,1800,2.5,8.55E+05,400,1580,Frontal,Intermediate,,Fresh/strong
+Pelly Mountains - 4,780,2920,4.7,1.91E+06,680,2240,Frontal,Intermediate,,
+Pelly Mountains - 5,471,1610,1,404000,430,1180,Lateral,Intermediate,,Fresh/strong
+Texas Creek,710,2300,45,1.90E+06,800,1450,Frontal,Intermediate,Saturated,Fresh/strong
+Mt Cayley 1984,1180,3460,0.7,5.97E+05,1180,2990,Lateral,Low,Saturated,Weak/weathered
+Mt Cayley 1963,1000,2460,5,5.99E+05,950,2130,Lateral,Low,Saturated,Weak/weathered
+Hope Slide,1080,2630,48,2.53E+06,1100,2440,Frontal,High,Saturated,Fresh/strong
+Cheam,1050,6420,175,1.81E+07,1730,6010,Unconfined,Intermediate,Unsaturated,Weak/weathered
+Nozzle,1050,6420,67,3172000,1050,4940,Lateral,Low,Saturated,
