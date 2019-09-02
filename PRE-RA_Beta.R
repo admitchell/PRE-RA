@@ -1,26 +1,29 @@
-# Stochastic Runout Estimation - Rock Avalanche: SRE-RA
-# Version 0.1 - Beta
+# Probabilistic Runout Estimator - Rock Avalanche: PRE-RA
+# Version 0.1 - Beta 
+# Copyright (C) 2019  University of British Columbia
 # 
-# Read in user supplied topo
-# Digitize a profile on the topo
-# Find the probability of exceedance for points along the path using the multilinear regression
-# Plot the probability of runout exceedance intervals on the path
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# For a copy of the GNU General Public License see <https://www.gnu.org/licenses/>.
+# 
+# Developer contact: Andrew Mitchell <amitchell@eoas.ubc.ca>
 #
-# 18 January 2019 - AM multiple linear regression implemented
-# 22 January 2019 - AM addition of script to predict width of flows
-# 06 February 2019 - AM update for indicator variable and probability calculation
 ######################################################################################################################
 
-# Clear the workspace and set library path
+# Clear the workspace
 rm(list = ls())
-.libPaths("D:/R Library/win-library/3.5")
 
 # set the wd and read in the table for complete cases
-setwd("D:/Rock Avalanche Database/Predictive")
+setwd("C:/Users/amitchell/Documents/Rock Avalanche Paper/Predictive")
 all.data = read.csv("Can_data.csv")
-
-# select the dataset to use in the statical analysis
-# dataset = "Canadian"
 
 # Select confined (TRUE) or unconfined (FALSE)
 confinement = TRUE 
@@ -28,13 +31,14 @@ confinement = TRUE
 # select the analysis to be run, "path" or "point"
 analysis = "path"
 
-# if path was selected, define the event volume in Mm^3
+# if path is selected, define the event volume in M m^3
 volume = 3
 
-# if point was selected, define the target probability of exceedance
+# if point is selected, define the target probability of exceedance
 PE = 0.25
 
 # Read in a topo file and draw a profile
+# Libraries 'sp' and 'raster' must be installed
 library(sp)
 library(raster)
 
@@ -66,7 +70,11 @@ par(oma = c(0, 0, 0, 2))
 plot(hs, col = gray(seq(1, 0, -0.1)), alpha = 0.5, legend = FALSE)
 mtext("Elevation (m)", side = 4, line = 4.5, outer = FALSE, adj = 0.5)
 plot(DEM, col=terrain.colors(35), alpha = 0.5, add = TRUE)
+contour(DEM, add = TRUE, col = grey(0.5))
 title(main = "", xlab = "Easting (m)", ylab = "Northing (m)")
+
+# turn off the locator bell
+options(locatorBell = FALSE)
 
 ### next lines must be run all together ###
 # digitize the runout path
@@ -98,10 +106,10 @@ X = (Xmod$coef[1] + TopData$x * Xmod$coef[2])
 ### end path digitization ###
 
 # alternate to read in pre-digiitzed points
-digitized = read.csv("May16_path-analysis.csv", header = TRUE)
-
-X = digitized$X
-Y = digitized$Y
+# digitized = read.csv("May16_path-analysis.csv", header = TRUE)
+# 
+# X = digitized$X
+# Y = digitized$Y
 
 ### get H and L values to use in analysis ###
 # create a dataframe of path coordinates
@@ -261,7 +269,6 @@ if(analysis == "path"){
   
   legend("topright", legend = "Calculating runout exceedance probabilities....", bg = "white")
   
-  ### NEW CODE FOR MULTILINEAR REGRESSION ###
   # define the probability of exceedance values
   target.PE = c(0.95, 0.75, 0.5, 0.25, 0.05, 0.01)
   
@@ -275,7 +282,7 @@ if(analysis == "path"){
   
   # check if the calculated probabilities span the range of target.PE
   check.range = which(target.PE > min(point.pred))
-  target.PE = target.PE[check.range]
+  target.L = target.PE[check.range]
   
   # find the values of W corresponding to different P(E) levels, create a vector to store data
   W.pred = numeric(length = length(target.PE))
@@ -286,90 +293,92 @@ if(analysis == "path"){
   }
   
   # interpolate between digitized points to find the location corresponding to the target values  
-  intersect.coords = matrix(nrow = length(target.PE), ncol = 2) 
+  intersect.coords = matrix(nrow = length(target.L), ncol = 2) 
   # create a vector to store the index for the values (used later for plotting on topography)
-  index.PE = numeric(length = length(target.PE))
+  index.PE = numeric(length = length(target.L))
   
-  for(i in 1:length(target.PE)){
-    # find the index first value of L from the profile that is greater than the predicted value of L at this PE
-    upper.index = min(which(point.pred < target.PE[i]))
-    # lower index is one less
-    lower.index = upper.index - 1
-    
-    # interpolate to find H and L values of the profile where it crosses the prediction curve
-    # pred.upper = point.pred[upper.index, i]
-    # pred.lower = point.pred[lower.index, i]
-    L.upper = L[upper.index]
-    L.lower = L[lower.index]
-    H.upper = H[upper.index]
-    H.lower = H[lower.index]
-    
-    # calculate slopes and intercepts for linear interpolations
-    # slope.pred = (H.upper - H.lower)/(pred.upper - pred.lower)
-    slope.prof = (H.upper - H.lower)/(L.upper - L.lower)
-    # b.pred = H.lower - slope.pred*pred.lower
-    b.prof = H.lower - slope.prof*L.lower
-    
-    # calculate an initial error halfway between the digitized points
-    H.test = (H.upper + H.lower)/2
-    L.test = (L.upper + L.lower)/2
-    
-    p.exceed = runout.probabilities(volume, H.test, L.test, coeff.L, stdev.L, confinement)
-    
-    error = target.PE[i] - p.exceed
-    H.max = H.upper
-    H.min = H.lower
-    L.max = L.upper
-    L.min = L.lower
-    
-    # iterate until the target PE is reached
-    while(abs(error) > 0.001){
-      if(error < 0){
-        H.new = H.max - (H.test - H.min)/2
-        L.new = L.max - (L.test - L.min)/2
-        H.lower = H.test
-        L.lower = L.test
-      } else {
-        H.new = H.min + (H.test - H.min)/2
-        L.new = L.min + (L.test - L.min)/2
-        H.upper = H.test
-        L.upper = L.test
-      }
+  # check that the runout path is long enough to do the next calculation
+  error.flag = 0
+  if(min(point.pred > 0.95)) {
+    error.flag = 1
+  } else {
+    for(i in 1:length(target.L)){
+      # find the index first value of L from the profile that is greater than the predicted value of L at this PE
+      upper.index = min(which(point.pred < target.L[i]))
+      # lower index is one less
+      lower.index = upper.index - 1
       
+      # interpolate to find H and L values of the profile where it crosses the prediction curve
+      L.upper = L[upper.index]
+      L.lower = L[lower.index]
+      H.upper = H[upper.index]
+      H.lower = H[lower.index]
+      
+      # calculate slopes and intercepts for linear interpolations
+      slope.prof = (H.upper - H.lower)/(L.upper - L.lower)
+      b.prof = H.lower - slope.prof*L.lower
+      
+      # calculate an initial error halfway between the digitized points
       H.test = (H.upper + H.lower)/2
       L.test = (L.upper + L.lower)/2
       
       p.exceed = runout.probabilities(volume, H.test, L.test, coeff.L, stdev.L, confinement)
       
-      # calculate the initial error, and define the upper and lower bounds for width
-      error = target.PE[i] - p.exceed
+      error = target.L[i] - p.exceed
+      H.max = H.upper
+      H.min = H.lower
+      L.max = L.upper
+      L.min = L.lower
+      
+      # iterate until the target PE is reached
+      while(abs(error) > 0.001){
+        if(error < 0){
+          H.new = H.max - (H.test - H.min)/2
+          L.new = L.max - (L.test - L.min)/2
+          H.lower = H.test
+          L.lower = L.test
+        } else {
+          H.new = H.min + (H.test - H.min)/2
+          L.new = L.min + (L.test - L.min)/2
+          H.upper = H.test
+          L.upper = L.test
+        }
+        
+        H.test = (H.upper + H.lower)/2
+        L.test = (L.upper + L.lower)/2
+        
+        p.exceed = runout.probabilities(volume, H.test, L.test, coeff.L, stdev.L, confinement)
+        
+        # calculate the initial error, and define the upper and lower bounds for width
+        error = target.L[i] - p.exceed
+      }
+      
+      # store the result
+      intersect.coords[i, ] = c(L.test, H.test)
+      index.PE[i] = lower.index
     }
     
-    # store the result
-    intersect.coords[i, ] = c(L.test, H.test)
-    index.PE[i] = lower.index
-  }
- 
-  # Convert profile values back to the northing easting coordinates
-  # interpolate to find the point on the profile between them
-  X.PE = numeric(length = length(target.PE))
-  Y.PE = numeric(length = length(target.PE))
-
-  for(i in 1:length(target.PE)) {
-    X.PE[i] = X[index.PE[i]] + (X[index.PE[i]+1] - X[index.PE[i]])*((L[index.PE[i]] - intersect.coords[i, 1])/(L[index.PE[i]] - L[index.PE[i]+1]))
-    Y.PE[i] = Y[index.PE[i]] + (Y[index.PE[i]+1] - Y[index.PE[i]])*((L[index.PE[i]] - intersect.coords[i, 1])/(L[index.PE[i]] - L[index.PE[i]+1]))
+    # Convert profile values back to the northing easting coordinates
+    # interpolate to find the point on the profile between them
+    X.PE = numeric(length = length(target.L))
+    Y.PE = numeric(length = length(target.L))
+    
+    for(i in 1:length(target.L)) {
+      X.PE[i] = X[index.PE[i]] + (X[index.PE[i]+1] - X[index.PE[i]])*((L[index.PE[i]] - intersect.coords[i, 1])/(L[index.PE[i]] - L[index.PE[i]+1]))
+      Y.PE[i] = Y[index.PE[i]] + (Y[index.PE[i]+1] - Y[index.PE[i]])*((L[index.PE[i]] - intersect.coords[i, 1])/(L[index.PE[i]] - L[index.PE[i]+1]))
+    }
   }
   
   # make points offset from the path line segments to plot average width
   X.mid = numeric(length = length(X) - 1)
   Y.mid = numeric(length = length(Y) - 1)
-  # m = numeric(length = length(X.mid))
-  # 
+  m = numeric(length = length(X.mid))
+   
   for(i in 1:length(X.mid)){
     X.mid[i] = (X[i + 1] - X[i])/2 + X[i]
     Y.mid[i] = (Y[i + 1] - Y[i])/2 + Y[i]
 
-  #  m[i] = (Y[i + 1] - Y[i])/(X[i + 1] - X[i])
+    m[i] = (Y[i + 1] - Y[i])/(X[i + 1] - X[i])
   }
   
   # make a vertical plane containing each line segment 
@@ -407,9 +416,33 @@ if(analysis == "path"){
     }
   }
   
+  # check that the lines drawn from the offset points don't cross
+  for(i in 2:length(upperoffset.X[ , 1])) {
+    # calculate the slope of the upper and lower offset lines
+    m.upper = (upperoffset.Y[i, 1] - upperoffset.Y[i - 1, 1])/(upperoffset.X[i, 1] - upperoffset.X[i - 1, 1])
+    m.lower = (loweroffset.Y[i, 1] - loweroffset.Y[i - 1, 1])/(loweroffset.X[i, 1] - loweroffset.X[i - 1, 1])
+    
+    # check for cases with very small x components (very large slope values)
+    if(abs(m.upper) > 100) m.upper = 100
+    if(abs(m.lower) > 100) m.lower = 100
+    
+    # check that the two slopes are within 15% (allowing for round off error)
+    m.check = (m.upper - m.lower)/m[i]
+    
+    if(abs(m.check) > 0.15) {
+      temp.x = upperoffset.X[i, ]
+      temp.y = upperoffset.Y[i, ]
+      
+      upperoffset.X[i, ] = loweroffset.X[i, ]
+      loweroffset.X[i, ] = temp.x
+      
+      upperoffset.Y[i, ] = loweroffset.Y[i, ]
+      loweroffset.Y[i, ] = temp.y
+    }
+  }
 
   # replot topography for final figure
-  SF=0.9
+  # SF=0.9
   windows(width = SF*11, height = SF*8.5)
   par(mar=c(4, 4, 0, 1))
   par(oma = c(0, 0, 0, 2))
@@ -418,94 +451,81 @@ if(analysis == "path"){
   plot(DEM, col=terrain.colors(35), alpha = 0.5, add = TRUE)
   contour(DEM, add = TRUE, col = grey(0.5))
   title(main = "", xlab = "Easting (m)", ylab = "Northing (m)")
-
+  
   #plot coloured lines over the runout path to indicate the probabilities of exceedance
-  # green line for probability of exceedance less than 1%, blue line for probability of exceedance less than 5%, greater than 1%, check for NA's
-  if(is.na(X.PE[6]) & !is.na(X.PE[5])) {
-    lines(c(X.PE[5],X[1 + index.PE[5]:length(X)]), c(Y.PE[5],Y[1  +index.PE[5]:length(Y)]), col = "blue", lwd = 3)
-    lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
-    lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
-    lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
-    lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
-    lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
-  }
-  if(is.na(X.PE[5]) & !is.na(X.PE[4])) {
-    lines(c(X.PE[4],X[1 + index.PE[4]:length(X)]), c(Y.PE[4],Y[1  +index.PE[4]:length(Y)]), col = "yellow", lwd = 3)
-    lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
-    lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
-    lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
-    lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
-  } else {
-    lines(c(X.PE[6],X[1 + index.PE[6]:length(X)]), c(Y.PE[6],Y[1  +index.PE[6]:length(Y)]), col = "green", lwd = 3)
-    lines(c(X.PE[5],X[1 + index.PE[5]:index.PE[6] - 1], X.PE[6]), c(Y.PE[5],Y[1 + index.PE[5]:index.PE[6] - 1], Y.PE[6]), col = "blue", lwd = 3)
-    lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
-    lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
-    lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
-    lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
-    lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
-  }
-  # # yellow line for probability of exceedance less than 34 %, greater than 5, NA check
-  # if(is.na(X.PE[5])) {
-  #   lines(c(X.PE[4],X[1 + index.PE[4]:length(X)]), c(Y.PE[4],Y[1  +index.PE[4]:length(Y)]), col = "yellow", lwd = 3)
-  # } else {
-  #   lines(c(X.PE[5],X[1 + index.PE[5]:length(X)]), c(Y.PE[5],Y[1  +index.PE[5]:length(Y)]), col = "blue", lwd = 3)
-  #   lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
-  # }
-  # # orange line for probability of exceedance less than 50 %, greater than 34%, NA check
-  # if(is.na(X.PE[4])) {
-  #   lines(c(X.PE[3],X[1 + index.PE[3]:length(X)]), c(Y.PE[3],Y[1  +index.PE[3]:length(Y)]), col = "yellow", lwd = 3)
-  # } else {
-  #   lines(c(X.PE[4],X[1 + index.PE[4]:length(X)]), c(Y.PE[4],Y[1  +index.PE[4]:length(Y)]), col = "blue", lwd = 3)
-  #   lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[3]), col = "yellow", lwd = 3)
-  # }
-  # 
-  # 
-  # 
-  # # yellow line for probability of exceedance less than 34 %, greater than 5%
-  # lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
-  # # orange line for probability of exceedance less than 50 %, greater than 34%
-  # lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
-  # # red line for probability of exceedance less than 68 %, greater than 50%
-  # lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
-  # # darkred line for probability of exceedance less than 95 %, greater than 68%
-  # lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
-  # # black line for probability of exceedance greater than 95%
-  # lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
 
+  if(error.flag == 1) {
+    lines(X[1:length(X)], Y[1:length(Y)], col = "black", lwd = 3)
+  } else {
+    if(length(X.PE) == 6) {
+      lines(c(X.PE[6],X[1 + index.PE[6]:length(X)]), c(Y.PE[6],Y[1  +index.PE[6]:length(Y)]), col = "green", lwd = 3)
+      lines(c(X.PE[5],X[1 + index.PE[5]:index.PE[6] - 1], X.PE[6]), c(Y.PE[5],Y[1 + index.PE[5]:index.PE[6] - 1], Y.PE[6]), col = "blue", lwd = 3)
+      lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
+      lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
+      lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
+      lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    }
+    if(length(X.PE) == 5) {
+      lines(c(X.PE[5],X[1 + index.PE[5]:length(X)]), c(Y.PE[5],Y[1  +index.PE[5]:length(Y)]), col = "blue", lwd = 3)
+      lines(c(X.PE[4],X[1 + index.PE[4]:index.PE[5] - 1], X.PE[5]), c(Y.PE[4],Y[1 + index.PE[4]:index.PE[5] - 1], Y.PE[5]), col = "yellow", lwd = 3)
+      lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
+      lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
+      lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    }
+    if(length(X.PE) == 4) {
+      lines(c(X.PE[4],X[1 + index.PE[4]:length(X)]), c(Y.PE[4],Y[1  +index.PE[4]:length(Y)]), col = "yellow", lwd = 3)
+      lines(c(X.PE[3],X[1 + index.PE[3]:index.PE[4] - 1], X.PE[4]), c(Y.PE[3],Y[1 + index.PE[3]:index.PE[4] - 1], Y.PE[4]), col = "orange", lwd = 3)
+      lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
+      lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    } 
+    if(length(X.PE) == 3) {
+      lines(c(X.PE[3],X[1 + index.PE[3]:length(X)]), c(Y.PE[3],Y[1  +index.PE[3]:length(Y)]), col = "orange", lwd = 3)
+      lines(c(X.PE[2],X[1 + index.PE[2]:index.PE[3] - 1], X.PE[3]), c(Y.PE[2],Y[1 + index.PE[2]:index.PE[3] - 1], Y.PE[3]), col = "red", lwd = 3)
+      lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    }
+    if(length(X.PE) == 2) {
+      lines(c(X.PE[2],X[1 + index.PE[2]:length(X)]), c(Y.PE[2],Y[1  +index.PE[2]:length(Y)]), col = "red", lwd = 3)
+      lines(c(X.PE[1],X[1 + index.PE[1]:index.PE[2] - 1], X.PE[2]), c(Y.PE[1],Y[1 + index.PE[1]:index.PE[2] - 1], Y.PE[2]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    }
+    if(length(X.PE) == 1) {
+      lines(c(X.PE[1],X[1 + index.PE[1]:length(X)]), c(Y.PE[1],Y[1  +index.PE[1]:length(Y)]), col = "darkred", lwd = 3)
+      lines(c(X[1:index.PE[1]], X.PE[1]), c(Y[1:index.PE[1]], Y.PE[1]), col = "black", lwd = 3)
+    }
+    points(X.PE, Y.PE, pch = 4, lwd = 3)
+  }
+  
   legend("bottomright", title = "Probability of Exceedance", lty = c(1, 1, 1, 1, 1, 1, 1), lwd = c(3, 3, 3, 3, 3, 3, 3),
          legend = (c("> 0.95", "0.95 - 0.75", "0.75 - 0.5", "0.5 - 0.25", "0.25 - 0.05", "0.05 - 0.01")),
          col = c("black", "darkred", "red", "orange", "yellow", "blue", "green"), bg = "white")
-
-  points(X.PE, Y.PE, pch = 4, lwd = 3)
   
   # add in lines for the width exceedance contours
-  points(upperoffset.X[ , 2], upperoffset.Y[ , 2], pch = 18, col = "darkred")
-  points(loweroffset.X[ , 2], loweroffset.Y[ , 2], pch = 18, col = "darkred")
-
-  points(upperoffset.X[ , 3], upperoffset.Y[ , 3], pch = 18, col = "red")
-  points(loweroffset.X[ , 3], loweroffset.Y[ , 3], pch = 18, col = "red")
-
-  points(upperoffset.X[ , 4], upperoffset.Y[ , 4], pch = 18, col = "yellow")
-  points(loweroffset.X[ , 4], loweroffset.Y[ , 4], pch = 18, col = "yellow")
-
-  # lines(upperoffset.X[ , 2], upperoffset.Y[ , 2], lty = 2, col = "darkred")
-  # lines(loweroffset.X[ , 2], loweroffset.Y[ , 2], lty = 2, col = "darkred")
+  # points(upperoffset.X[ , 2], upperoffset.Y[ , 2], pch = 18, col = "darkred")
+  # points(loweroffset.X[ , 2], loweroffset.Y[ , 2], pch = 18, col = "darkred")
   # 
-  # lines(upperoffset.X[ , 3], upperoffset.Y[ , 3], lty = 2, col = "red")
-  # lines(loweroffset.X[ , 3], loweroffset.Y[ , 3], lty = 2, col = "red")
+  # points(upperoffset.X[ , 3], upperoffset.Y[ , 3], pch = 18, col = "red")
+  # points(loweroffset.X[ , 3], loweroffset.Y[ , 3], pch = 18, col = "red")
   # 
-  # lines(upperoffset.X[ , 4], upperoffset.Y[ , 4], lty = 2, col = "yellow")
-  # lines(loweroffset.X[ , 4], loweroffset.Y[ , 4], lty = 2, col = "yellow")
+  # points(upperoffset.X[ , 4], upperoffset.Y[ , 4], pch = 18, col = "yellow")
+  # points(loweroffset.X[ , 4], loweroffset.Y[ , 4], pch = 18, col = "yellow")
+
+  lines(upperoffset.X[ , 2], upperoffset.Y[ , 2], lty = 2, col = "darkred")
+  lines(loweroffset.X[ , 2], loweroffset.Y[ , 2], lty = 2, col = "darkred")
+
+  lines(upperoffset.X[ , 3], upperoffset.Y[ , 3], lty = 2, col = "red")
+  lines(loweroffset.X[ , 3], loweroffset.Y[ , 3], lty = 2, col = "red")
+
+  lines(upperoffset.X[ , 4], upperoffset.Y[ , 4], lty = 2, col = "yellow")
+  lines(loweroffset.X[ , 4], loweroffset.Y[ , 4], lty = 2, col = "yellow")
 }  
  
-# # Point analysis 
+### Point analysis  ###
 if(analysis == "point"){
   legend("topright", legend = "Calculating target volume..........................", bg = "white")
-
-  # # take the HL value for the last point on the path
-  # target.HL = HL[length(HL)]
-  # # check if there is a point with a lower H/L value elsewhere on the path
-  # if(target.HL > min(HL)) target.HL = min(HL)
 
   # use the volume.probabilities function to calculate the minimum volume for the defined probability of exceedance
   min.volume = volume.probabilities(PE, H[length(H)], L[length(L)], coeff.L, stdev.L, confinement)
@@ -526,139 +546,14 @@ if(analysis == "point"){
   title(main = "", xlab = "Easting (m)", ylab = "Northing (m)")
 
   legend("topright", legend = output.text, bg = "white")
-
+  
   lines(X, Y)
   points(X[1], Y[1], pch = 4, lwd = 3)
   text(X[1], Y[1], "Source crest", pos = 4)
   points(X[length(X)], Y[length(Y)], pch = 4, lwd = 3)
-  text(X[length(X)], Y[length(Y)], "Point of interest", pos = 4)
+  text(X[length(X)], Y[length(Y)], "Point of interest", pos = 3)
 }
 
-png(filename = "May16Profile.png", width = 2244, height = 1628, res = 300)
-
-plot(L[1:12],path.z[1:12], type = "l", main = "May 16 Event Profile", xlab = "Runout Distance (m)", ylab = "Elevation (m)")
-
-dev.off()
-
-# 
-# ############################################################################################
-# # create a plot showing the breakpoints along the profile
-# 
-# # find the path distance for each P(E) breakpoint
-# # find the values of X.PE and Y.PE that are valid
-# X.valid = which(is.finite(X.PE))
-# Y.valid = X.valid
-# 
-# # calculate the distance between the previous digitized point on the profile and the P(E) breakpoint
-# path.increment = sqrt((X[index.PE[X.valid]]-X.PE[X.valid])^2 + (Y[index.PE[Y.valid]]-Y.PE[Y.valid])^2)
-# 
-# # calculate the change in elevation 
-# H.increment = numeric(length = length(path.increment))
-# index = 1
-# 
-# for(i in min(X.valid):max(X.valid)) {
-#   H.increment[index] = (path.z[index.PE[i]])+(path.z[index.PE[i]+1] - path.z[index.PE[i]])*((HL[index.PE[i]] - HL.optim[i])/(HL[index.PE[i]] - HL[index.PE[i]+1]))
-#   index = index + 1
-# } 
-# 
-# H.increment = max(path.z) - H.increment
-# 
-# # find the P(E) for the first line segment
-# PE.valid = target.PE[X.valid]
-# 
-# # initialize segments for plotting
-# L100to95 = 0
-# L96to68 = 0
-# L68to50 = 0
-# L50to34 = 0
-# L34to5 = 0
-# L5to1 = 0
-# Lless1 = 0
-# 
-# H100to95 = 0
-# H96to68 = 0
-# H68to50 = 0
-# H50to34 = 0
-# H34to5 = 0
-# H5to1 = 0
-# Hless1 = 0
-# 
-# 
-# L100to95 = c(path.dist[1],path.dist[index.PE[1]]+path.increment[1])
-# H100to95 = c(H[1], H.increment[1])
-#   
-# if(index.PE[1]==index.PE[2]) {
-#   L95to68 = c(path.dist[index.PE[1]]+path.increment[1], path.dist[index.PE[2]]+path.increment[2])
-#   H95to68 = c(H.increment[1], H.increment[2])
-# } else {
-#   L95to68 = c(path.dist[index.PE[1]]+path.increment[1], path.dist[(index.PE[1]+1):index.PE[2]], path.dist[index.PE[2]]+path.increment[2])
-#   H95to68 = c(H.increment[1], H[(index.PE[1]+1):index.PE[2]], H.increment[2])
-# }
-#   
-# if(index.PE[2]==index.PE[3]) {
-#   L68to50 = c(path.dist[index.PE[2]]+path.increment[2], path.dist[index.PE[3]]+path.increment[3])
-#   H68to50 = c(H.increment[2], H.increment[3])
-# } else {
-#   L68to50 = c(path.dist[index.PE[2]]+path.increment[2], path.dist[(index.PE[2]+1):index.PE[3]], path.dist[index.PE[3]]+path.increment[3])
-#   H68to50 = c(H.increment[2], H[(index.PE[2]+1):index.PE[3]], H.increment[3])
-# }
-#   
-# if(index.PE[3]==index.PE[4]) {
-#   L50to34 = c(path.dist[index.PE[3]]+path.increment[3], path.dist[index.PE[4]]+path.increment[4])
-#   H50to34 = c(H.increment[3], H.increment[4])
-# } else {
-#   L50to34 = c(path.dist[index.PE[3]]+path.increment[3], path.dist[(index.PE[3]+1):index.PE[4]], path.dist[index.PE[4]]+path.increment[4])
-#   H50to34 = c(H.increment[3], H[(index.PE[3]+1):index.PE[4]], H.increment[4])
-# }
-#   
-# if(index.PE[4]==index.PE[5]) {
-#   L34to5 = c(path.dist[index.PE[4]]+path.increment[4], path.dist[index.PE[5]]+path.increment[5])
-#   H34to5 = c(H.increment[4], H.increment[5])
-# } else {
-#   L34to5 = c(path.dist[index.PE[4]]+path.increment[4], path.dist[(index.PE[4]+1):index.PE[5]], path.dist[index.PE[5]]+path.increment[5])
-#   H34to5 = c(H.increment[4], H[(index.PE[4]+1):index.PE[5]], H.increment[5])
-# }
-#   
-# if(index.PE[5]==index.PE[6]) {
-#   L5to1 = c(path.dist[index.PE[5]]+path.increment[5], path.dist[index.PE[6]])
-#   H5to1 = c(H.increment[5], H[index.PE[6]])
-# } else {
-#   L5to1 = c(path.dist[index.PE[5]]+path.increment[5], path.dist[(index.PE[5]+1):index.PE[6]])
-#   H5to1 = c(H.increment[5], H[(index.PE[5]+1):index.PE[6]])
-# }
-# 
-# 
-# 
-# SF=0.9
-# windows(width = SF*11, height = SF*5)
-# par(mar=c(4, 4, 0, 1))
-# par(oma = c(0, 0, 0, 2))
-# 
-# plot(path.dist, H, xlab = "L (m)", ylab = "H (m)", ylim = c(max(H), min(H)))
-# lines(L100to95, H100to95, col = "black", lwd = 3)
-# lines(L95to68, H95to68, col = "darkred", lwd = 3)
-# lines(L68to50, H68to50, col = "red", lwd = 3)
-# lines(L50to34, H50to34, col = "orange", lwd = 3)
-# lines(L34to5, H34to5, col = "yellow", lwd = 3)
-# lines(L5to1, H5to1, col = "blue", lwd = 3)
-# 
-# legend("topright", title = "Probability of Exceedance", lty = c(1, 1, 1, 1, 1, 1, 1), lwd = c(3, 3, 3, 3, 3, 3, 3),
-#        legend = (c("> 0.95", "0.95 - 0.68", "0.68 - 0.5", "0.5 - 0.34", "0.34 - 0.05", "0.05 - 0.01")),
-#        col = c("black", "darkred", "red", "orange", "yellow", "blue", "green"), bg = "white")
-# 
-# SF=0.9
-# windows(width = SF*11, height = SF*5)
-# par(mar=c(4, 4, 0, 1))
-# par(oma = c(0, 0, 0, 2))
-# 
-# plot(path.dist, c(1,HL[2:length(HL)]), type = "l", xlab = "L (m)", ylab = "H/L", ylim = c(0.1, 1))
-# lines(c(-500,max(L100to95, na.rm = TRUE)), c(HL.optim[1], HL.optim[1]), lty = 2)
-# lines(c(-500,max(L95to68, na.rm = TRUE)), c(HL.optim[2], HL.optim[2]), lty = 2)
-# lines(c(-500,max(L68to50, na.rm = TRUE)), c(HL.optim[3], HL.optim[3]), lty = 2)
-# lines(c(-500,max(L50to34, na.rm = TRUE)), c(HL.optim[4], HL.optim[4]), lty = 2)
-# lines(c(-500,max(L34to5, na.rm = TRUE)), c(HL.optim[5], HL.optim[5]), lty = 2)
-# lines(c(-500,max(L5to1, na.rm = TRUE)), c(HL.optim[6], HL.optim[6]), lty = 2)
-# 
 # # output X, Y and Z values to re-run an analysis if needed
 # output = data.frame(X, Y, path.z)
 # write.csv(output, file = "xyz_coords.csv")
