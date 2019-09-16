@@ -1,5 +1,5 @@
 PRE-RA: Probabilistic Runout Estimator – Rock Avalanche 
-Copyright (C) 2019  University of British Columbia
+Copyright (C) 2019  Andrew Mitchell
 
 This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or any later version.
 
