@@ -39,4 +39,5 @@ Lines 109 - 112: Option to read in a csv file with X and Y (easting and northing
 Lines 558 - 559: Option to output the X, Y and Z path coordinates from the analysis.
 
 REFERENCE:
+
 Mitchell, A., McDougall, S., Nolde, N., Brideau, M.-A., Whittall, J., Aaron, J. (2019) Landslides. https://doi.org/10.1007/s10346-019-01331-3
