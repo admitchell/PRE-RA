@@ -11,7 +11,7 @@ Developer contact: Andrew Mitchell <amitchell@eoas.ubc.ca>
 
 OVERVIEW:
 
-Definitions of all terms, a description of the data used in the statistical analysis, and details of the analyses implemented in this code are described in Mitchell et al. (in preparation). This code was implemented using the R programming language.
+Definitions of all terms, a description of the data used in the statistical analysis, and details of the analyses implemented in this code are described in Mitchell et al. (2019). This code was implemented using the R programming language.
 
 The user has two options for analysis, path or profile. A path analysis calculates the probability of runout exceedance probability ranges along the entire digitized path for a given volume, and a point analysis provides an estimate the volume that corresponds to the user-specified target probability of runout exceedance. The code uses a user-input topography grid to create a hillshade that the user digitizes a potential rock avalanche runout path on. For the path analysis the program will produce an image with probability ranges for the runout distance and mean path width on the supplied topography. With the point analysis the program supplies an image with the digitized path, and a numerical output of the calculated volume corresponding the the target probability of runout exceedance.
 
@@ -37,3 +37,6 @@ Optional segments are currently commented out in the code.
 Lines 109 - 112: Option to read in a csv file with X and Y (easting and northing) path coordinates. This will overwrite any digitized points.
 
 Lines 558 - 559: Option to output the X, Y and Z path coordinates from the analysis.
+
+REFERENCE:
+Mitchell, A., McDougall, S., Nolde, N., Brideau, M.-A., Whittall, J., Aaron, J. (2019) Landslides. https://doi.org/10.1007/s10346-019-01331-3
